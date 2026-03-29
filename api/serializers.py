@@ -38,17 +38,25 @@ class ProductSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Product
-        fields = ['id', 'title', 'shop', 'price', 'oldPrice', 'rating']
+        # --- UPDATED: Added category, description, image_url, and stock_quantity ---
+        fields = [
+            'id', 'title', 'shop', 'category', 'price', 
+            'oldPrice', 'rating', 'description', 'image_url', 'stock_quantity'
+        ]
 
 class OrderItemSerializer(serializers.ModelSerializer):
     product_id = serializers.ReadOnlyField(source='product.id')
     title = serializers.ReadOnlyField(source='product.title')
     price = serializers.ReadOnlyField(source='product.price')
     shop = serializers.StringRelatedField(source='product.shop') 
+    
+    # Optional but helpful: Added image_url so the cart screen can show product images!
+    image_url = serializers.ReadOnlyField(source='product.image_url')
 
     class Meta:
         model = OrderItem
-        fields = ['id', 'product_id', 'title', 'price', 'shop', 'quantity']
+        # --- UPDATED: Added image_url to the cart items ---
+        fields = ['id', 'product_id', 'title', 'price', 'shop', 'quantity', 'image_url']
 
 class OrderSerializer(serializers.ModelSerializer):
     items = OrderItemSerializer(many=True, read_only=True)
