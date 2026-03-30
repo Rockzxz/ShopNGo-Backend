@@ -9,9 +9,13 @@ class Category(models.Model):
         return self.name
 
 class Shop(models.Model):
+
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='shop', null=True, blank=True)
     name = models.CharField(max_length=200)
     category = models.CharField(max_length=100)
+    
+    logo = models.ImageField(upload_to='shop_logos/', null=True, blank=True)
+    description = models.TextField(max_length=500, blank=True)
 
     def __str__(self):
         return self.name
@@ -86,3 +90,14 @@ class Wishlist(models.Model):
 
     def __str__(self):
         return f"{self.user.username}'s wishlist: {self.product.title}"
+
+
+class Review(models.Model):
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='reviews')
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    rating = models.PositiveIntegerField(default=5) # 1-5
+    comment = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.user.username} - {self.product.title}"

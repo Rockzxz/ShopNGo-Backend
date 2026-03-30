@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import Category, Shop, Product, Order, OrderItem, UserProfile, Address, Wishlist
+from .models import Category, Shop, Product, Order, OrderItem, UserProfile, Address, Wishlist, Review
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -29,7 +29,7 @@ class CategorySerializer(serializers.ModelSerializer):
 class ShopSerializer(serializers.ModelSerializer):
     class Meta:
         model = Shop
-        fields = ['id', 'name', 'category']
+        fields = ['id', 'name', 'category', 'logo']
 
 from rest_framework import serializers
 from .models import Product
@@ -59,13 +59,14 @@ class OrderItemSerializer(serializers.ModelSerializer):
     title = serializers.ReadOnlyField(source='product.title')
     price = serializers.ReadOnlyField(source='product.price')
     shop = serializers.StringRelatedField(source='product.shop') 
+    shop_id = serializers.ReadOnlyField(source='product.shop.id')
     
     # 🚨 CHANGED: We use a MethodField to handle the Image URL safely
     image_url = serializers.SerializerMethodField()
 
     class Meta:
         model = OrderItem
-        fields = ['id', 'product_id', 'title', 'price', 'shop', 'quantity', 'image_url']
+        fields = ['id', 'product_id', 'title', 'price', 'shop', 'quantity', 'image_url', 'shop_id']
 
     # This function safely gets the URL of the image as a string
     def get_image_url(self, obj):
@@ -92,11 +93,6 @@ class WishlistSerializer(serializers.ModelSerializer):
     class Meta:
         model = Wishlist
         fields = ['id', 'product', 'created_at']
-
-class ShopSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Shop
-        fields = ['id', 'name', 'category']
 
 class AdminCreateMerchantSerializer(serializers.ModelSerializer):
     shop = ShopSerializer()
@@ -137,3 +133,26 @@ class OrderStatusUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Order
         fields = ['status']
+
+class ReviewSerializer(serializers.ModelSerializer):
+   
+    user_name = serializers.SerializerMethodField()
+    created_at_formatted = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Review
+        fields = ['id', 'user_name', 'rating', 'comment', 'created_at_formatted']
+
+    def get_user_name(self, obj):
+        
+        first = obj.user.first_name
+        last = obj.user.last_name
+        
+        full_name = f"{first} {last}".strip()
+        
+        if full_name:
+            return full_name
+        return "Verified Customer"
+
+    def get_created_at_formatted(self, obj):
+        return obj.created_at.strftime("%b %d, %Y")
