@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import Category, Shop, Product, Order, OrderItem, UserProfile, Address, Wishlist, Review
+from .models import Category, Shop, Product, Order, OrderItem, Address, Wishlist, Review
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -31,25 +31,23 @@ class ShopSerializer(serializers.ModelSerializer):
         model = Shop
         fields = ['id', 'name', 'category', 'logo']
 
-from rest_framework import serializers
-from .models import Product
 
 class ProductSerializer(serializers.ModelSerializer):
+    
     shop = serializers.ReadOnlyField(source='shop.name')
-    category = serializers.ReadOnlyField(source='category.name')
-    image_url = serializers.SerializerMethodField() 
+    
+   
+    category_name = serializers.ReadOnlyField(source='category.name')
+
+  
 
     class Meta:
         model = Product
         fields = [
-            'id', 'title', 'shop', 'category', 'description', 
-            'price', 'stock_quantity', 'rating', 'image_url'
+            'id', 'title', 'shop', 
+            'category', 'category_name', 
+            'description', 'price', 'stock_quantity', 'rating', 'image_url'
         ]
-
-    def get_image_url(self, obj):
-        if obj.image_url:
-            return obj.image_url.url
-        return None
 
 class OrderItemSerializer(serializers.ModelSerializer):
     product_id = serializers.PrimaryKeyRelatedField(
@@ -87,7 +85,7 @@ class AddressSerializer(serializers.ModelSerializer):
         fields = ['id', 'label', 'phone_number', 'full_address', 'is_default']
 
 class WishlistSerializer(serializers.ModelSerializer):
-    # This pulls the full product data instead of just the ID
+   
     product = ProductSerializer(read_only=True) 
 
     class Meta:
@@ -103,11 +101,16 @@ class AdminCreateMerchantSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         shop_data = validated_data.pop('shop')
+        
+        
         user = User.objects.create_user(
             username=validated_data['username'],
             email=validated_data.get('email', ''),
-            password=validated_data['password']
+            password=validated_data['password'],
+            is_staff=False,       
+            is_superuser=False    
         )
+        
         Shop.objects.create(user=user, **shop_data)
         return user
 

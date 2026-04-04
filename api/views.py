@@ -49,25 +49,49 @@ class LoginView(APIView):
     def post(self, request):
         email = request.data.get('email')
         password = request.data.get('password')
+        
+       
         user = authenticate(username=email, password=password)
+        
         if user:
             token, _ = Token.objects.get_or_create(user=user)
-            return Response({'token': token.key})
+            
+          
+            is_merchant = hasattr(user, 'shop') and user.shop is not None
+            
+           
+            return Response({
+                'token': token.key,
+                'user': {
+                    'id': user.id,
+                    'username': user.username,
+                    'email': user.email,
+                    'is_admin': user.is_staff,  
+                    'is_merchant': is_merchant
+                }
+            })
+            
         return Response({'error': 'Invalid Credentials'}, status=status.HTTP_400_BAD_REQUEST)
 
 class ProductList(generics.ListAPIView):
     serializer_class = ProductSerializer
-
-    # We change this to a dynamic query instead of just returning ALL products
+    
     def get_queryset(self):
         queryset = Product.objects.all()
-        # Look for a '?category_id=' in the URL sent from React Native
-        category_id = self.request.query_params.get('category_id', None)
+        category_id = self.request.query_params.get('category')
         
-        if category_id is not None:
-            # If the app asks for a specific category, filter the list!
-            queryset = queryset.filter(category_id=category_id)
-            
+        # 🚨 This will print in your Django server terminal!
+        print(f"🚀 React requested Category ID: {category_id}")
+        
+        # If a category was requested...
+        if category_id:
+            # Check if it's actually a number (prevents crashes from "undefined")
+            if category_id.isdigit():
+                queryset = queryset.filter(category_id=category_id)
+            else:
+                print("⚠️ Warning: React sent a weird category ID. Returning empty.")
+                return queryset.none()
+                
         return queryset
 
 class CategoryList(generics.ListAPIView):
@@ -424,3 +448,36 @@ class ShopDetailView(generics.RetrieveAPIView):
     queryset = Shop.objects.all()
     serializer_class = ShopSerializer
     permission_classes = [AllowAny]
+
+class UserProfileView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        serializer = UserSerializer(request.user)
+        return Response(serializer.data)
+
+    def patch(self, request):
+        # We update the User object directly since first_name is on the User model
+        user = request.user
+        serializer = UserSerializer(user, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+class ChangePasswordView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def put(self, request):
+        user = request.user
+        old_password = request.data.get("old_password")
+        new_password = request.data.get("new_password")
+
+        # 1. Check if they typed their current password correctly
+        if not user.check_password(old_password):
+            return Response({"error": "Wrong current password."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # 2. Save the new password securely
+        user.set_password(new_password)
+        user.save()
+        return Response({"message": "Password updated successfully."}, status=status.HTTP_200_OK)
